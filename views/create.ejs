@@ -1,0 +1,17 @@
+<%- include("partials/header.ejs") %>
+
+<button class="homepage"><a href="/">🏠︎</a></button>
+<h1>Create a New Post</h1>
+<form action="/posts" method="POST">
+  <div>
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" required />
+  </div>
+  <div>
+    <label for="content">Content:</label>
+    <textarea id="content" name="content" rows="10" required></textarea>
+  </div>
+  <button type="submit">Create Post</button>
+</form>
+
+<%- include("partials/footer.ejs") %>

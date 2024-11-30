@@ -1,0 +1,42 @@
+<%- include("partials/header.ejs") %>
+
+<button class="homepage" style="margin-bottom: 20px">
+  <a href="/">🏠︎</a>
+</button>
+<section id="create-post">
+  <button><a href="/create">Create Blog</a></button>
+</section>
+
+<% if(!locals.blog) {%>
+<section id="view-posts">
+  <h2>View Posts</h2>
+  <% if(locals.blogs) {%> <% blogs.forEach(function(blog) { %>
+  <article style="display: inline-block">
+    <a href="/posts/<%= blog.id %>">
+      <h3><%= blog.title %></h3>
+    </a>
+  </article>
+  <br/>
+  <% }); }%>
+</section>
+<% } else {%>
+<h2><%= blog.title %></h2>
+<p><%= blog.publishMonth %>&nbsp;<%= blog.publishYear %></p>
+<p><%= blog.content %></p>
+<a href="/posts/<%= blog.id %>/edit">Edit</a>
+<form
+  action="/posts/<%= blog.id %>/delete"
+  method="POST"
+  style="display: inline"
+  onsubmit="return confirmDelete()"
+>
+  <button type="submit">Delete</button>
+</form>
+
+<script>
+  function confirmDelete() {
+    return confirm("Are you sure want to delete this blog post?");
+  }
+</script>
+
+<% } %> <%- include("partials/footer.ejs") %>

@@ -7,10 +7,16 @@ import { fileURLToPath } from "url";
 
 const app = express();
 const port = 4000;
-const blogsFilePath = path.join(dirname(fileURLToPath(import.meta.url)), "blogs.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const blogsFilePath = path.join(__dirname, "blogs.json");
 
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.set("view engine", "ejs");
+app.engine("ejs", require("ejs").__express);
+app.set("views", path.join(__dirname, "views")); // Assuming 'views' is in the same level as the root folder
 
 // Helper function to read blogs from the JSON file
 const readBlogs = () => {

@@ -1,41 +1,31 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from "express";
 import bodyParser from "body-parser";
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import ejs from "ejs";
+import connectDB from "./db.js";
+import Blog from "./models/Blog.js";
 
 const app = express();
-const port = 4000;
+const port = process.env.PORT || 4000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const blogsFilePath = path.join(__dirname, "blogs.json");
+
+connectDB();
 
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.set("view engine", "ejs");
 app.engine("ejs", ejs.__express);
-app.set("views", path.join(__dirname, "views")); // Assuming 'views' is in the same level as the root folder
+app.set("views", path.join(__dirname, "views"));
 
-// Helper function to read blogs from the JSON file
-const readBlogs = () => {
-  try {
-    const data = fs.readFileSync(blogsFilePath, "utf8");
-    return JSON.parse(data);
-  } catch (err) {
-    return [];
-  }
-};
-
-// Helper function to write blogs to the JSON file
-const writeBlogs = (blogs) => {
-  fs.writeFileSync(blogsFilePath, JSON.stringify(blogs, null, 2));
-};
-
-app.get("/", (req, res) => {
-  const blogs = readBlogs();
+app.get("/", async (req, res) => {
+  const blogs = await Blog.find();
   res.render("index.ejs", { blogs: blogs });
 });
 
@@ -43,25 +33,21 @@ app.get("/create", (req, res) => {
   res.render("create.ejs");
 });
 
-app.post("/posts", (req, res) => {
+app.post("/posts", async (req, res) => {
   const today = new Date();
-  const blog = {
+  const blog = new Blog({
     title: req.body.title,
     content: req.body.content,
     id: uuidv4(),
     publishMonth: today.toLocaleString("default", { month: "long" }),
     publishYear: today.getFullYear(),
-  };
-  const blogs = readBlogs();
-  blogs.push(blog);
-  writeBlogs(blogs);
-  console.log(blog);
+  });
+  await blog.save();
   res.redirect("/");
 });
 
-app.get("/posts/:id", (req, res) => {
-  const blogs = readBlogs();
-  const blog = blogs.find((blog) => blog.id === req.params.id);
+app.get("/posts/:id", async (req, res) => {
+  const blog = await Blog.findOne({ id: req.params.id });
   if (blog) {
     res.render("index.ejs", { blog: blog });
   } else {
@@ -69,9 +55,8 @@ app.get("/posts/:id", (req, res) => {
   }
 });
 
-app.get("/posts/:id/edit", (req, res) => {
-  const blogs = readBlogs();
-  const blog = blogs.find((blog) => blog.id === req.params.id);
+app.get("/posts/:id/edit", async (req, res) => {
+  const blog = await Blog.findOne({ id: req.params.id });
   if (blog) {
     res.render("edit.ejs", { blog: blog });
   } else {
@@ -79,24 +64,20 @@ app.get("/posts/:id/edit", (req, res) => {
   }
 });
 
-app.post("/posts/:id/update-content", (req, res) => {
-  const blogs = readBlogs();
-  const blog = blogs.find(blog => blog.id === req.params.id);
+app.post("/posts/:id/update-content", async (req, res) => {
+  const blog = await Blog.findOne({ id: req.params.id });
   if (blog) {
     if (req.body.content) blog.content = req.body.content;
-    writeBlogs(blogs);
+    await blog.save();
     res.redirect(`/posts/${blog.id}`);
   } else {
     res.status(404).send("Blog post not found");
   }
 });
 
-app.post("/posts/:id/delete", (req, res) => {
-  let blogs = readBlogs();
-  const blogIdx = blogs.findIndex(blog => blog.id === req.params.id);
-  if (blogIdx !== -1) {
-    blogs.splice(blogIdx, 1);
-    writeBlogs(blogs);
+app.post("/posts/:id/delete", async (req, res) => {
+  const blog = await Blog.findOneAndDelete({ id: req.params.id });
+  if (blog) {
     res.redirect("/");
   } else {
     res.status(404).send("Blog post not found");

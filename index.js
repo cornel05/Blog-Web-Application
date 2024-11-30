@@ -87,5 +87,3 @@ app.post("/posts/:id/delete", async (req, res) => {
 const server = app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
-
-server.setTimeout(10000); // Increase server timeout to 5 seconds

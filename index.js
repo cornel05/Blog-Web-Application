@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import ejs from "ejs";
 
 const app = express();
 const port = 4000;
@@ -15,7 +16,7 @@ app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.set("view engine", "ejs");
-app.engine("ejs", require("ejs").__express);
+app.engine("ejs", ejs.__express);
 app.set("views", path.join(__dirname, "views")); // Assuming 'views' is in the same level as the root folder
 
 // Helper function to read blogs from the JSON file

@@ -1,89 +1,92 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import express from "express";
 import bodyParser from "body-parser";
 import { v4 as uuidv4 } from "uuid";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import ejs from "ejs";
-import connectDB from "./db.js";
-import Blog from "./models/Blog.js";
+import fs from "fs";
 
 const app = express();
-const port = process.env.PORT || 4000;
+const port = 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const blogsFilePath = path.join(__dirname, "blogs.json");
 
-connectDB();
 
-app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.set("view engine", "ejs");
 app.engine("ejs", ejs.__express);
 app.set("views", path.join(__dirname, "views"));
 
-app.get("/", async (req, res) => {
-  const blogs = await Blog.find();
-  res.render("index.ejs", { blogs: blogs });
+const readBlogsFromFile = () => {
+  if (!fs.existsSync(blogsFilePath)) return [];
+  return JSON.parse(fs.readFileSync(blogsFilePath, "utf-8"));
+};
+
+const writeBlogsToFile = (blogs) => {
+  fs.writeFileSync(blogsFilePath, JSON.stringify(blogs, null, 2));
+};
+
+app.get("/", (req, res) => {
+  res.render("index.ejs", { blogs: readBlogsFromFile() });
 });
 
 app.get("/create", (req, res) => {
   res.render("create.ejs");
 });
 
-app.post("/posts", async (req, res) => {
-  const today = new Date();
-  const blog = new Blog({
+app.post("/posts", (req, res) => {
+  const blogs = readBlogsFromFile();
+  blogs.push({
     title: req.body.title,
     content: req.body.content,
     id: uuidv4(),
-    publishMonth: today.toLocaleString("default", { month: "long" }),
-    publishYear: today.getFullYear(),
+    publishMonth: new Date().toLocaleString("default", { month: "long" }),
+    publishYear: new Date().getFullYear(),
   });
-  await blog.save();
+  writeBlogsToFile(blogs);
   res.redirect("/");
 });
 
-app.get("/posts/:id", async (req, res) => {
-  const blog = await Blog.findOne({ id: req.params.id });
-  if (blog) {
-    res.render("index.ejs", { blog: blog });
-  } else {
-    res.status(404).send("Blog post not found");
-  }
+const findBlogById = (id) => readBlogsFromFile().find((b) => b.id === id);
+
+app.get("/posts/:id", (req, res) => {
+  const blog = findBlogById(req.params.id);
+  blog ? res.render("index.ejs", { blog }) : res.status(404).send("Blog post not found");
 });
 
-app.get("/posts/:id/edit", async (req, res) => {
-  const blog = await Blog.findOne({ id: req.params.id });
-  if (blog) {
-    res.render("edit.ejs", { blog: blog });
-  } else {
-    res.status(404).send("Blog post not found");
-  }
+app.get("/posts/:id/edit", (req, res) => {
+  const blog = findBlogById(req.params.id);
+  blog ? res.render("edit.ejs", { blog }) : res.status(404).send("Blog post not found");
 });
 
-app.post("/posts/:id/update-content", async (req, res) => {
-  const blog = await Blog.findOne({ id: req.params.id });
+app.post("/posts/:id/update-content", (req, res) => {
+  const blogs = readBlogsFromFile();
+  const blog = blogs.find((b) => b.id === req.params.id);
   if (blog) {
-    if (req.body.content) blog.content = req.body.content;
-    await blog.save();
+    blog.content = req.body.content;
+    writeBlogsToFile(blogs);
     res.redirect(`/posts/${blog.id}`);
   } else {
     res.status(404).send("Blog post not found");
   }
 });
 
-app.post("/posts/:id/delete", async (req, res) => {
-  const blog = await Blog.findOneAndDelete({ id: req.params.id });
-  if (blog) {
+app.post("/posts/:id/delete", (req, res) => {
+  let blogs = readBlogsFromFile();
+  const blogIndex = blogs.findIndex((b) => b.id === req.params.id);
+  if (blogIndex !== -1) {
+    blogs.splice(blogIndex, 1);
+    writeBlogsToFile(blogs);
     res.redirect("/");
   } else {
     res.status(404).send("Blog post not found");
   }
 });
 
-const server = app.listen(port, () => {
+app.use(express.static("public"));
+
+app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
